@@ -1,0 +1,62 @@
+# Hybrid Chaos → Quantum RNG — Sanitized Technical Brief
+
+**Purpose:** Provide a concise, sanitized description of a hybrid RNG architecture suitable for post-quantum Ethereum uses (Falcon seeding, ERC-4337 smart wallets, verifiable randomness).
+
+This brief omits private parameters and implementation-level heuristics — those are available under NDA. The goal here is to present the architecture and rationale while protecting IP and operational secrets.
+
+---
+
+## Architecture (high level)
+
+1. **Seed layer (TRNG / QRNG)**  
+   A secure physical entropy source is required as an initial seed input. Examples: photon-counting QRNGs, ring oscillators, thermal/voltage noise. For demos we use OS entropy; production requires certified entropy sources and per-device entropy estimation.
+
+2. **Chaotic amplification (deterministic maps)**  
+   Deterministic chaotic maps are used to amplify microscopic entropy differences into macroscopic differences in a stateful stream. Representative forms:
+   - Logistic map (fixed-point):  
+     \(X_{n+1} = \left\lfloor \frac{r \cdot X_n \cdot (Q - X_n)}{Q}\right\rfloor\).  
+     Implementation uses large fixed-point precision to avoid numerical cycles.
+   - Hénon-like 2D map:  
+     \(x_{n+1} = 1 - a x_n^2 + y_n,\quad y_{n+1} = b x_n\).  
+   These maps are used as *amplifiers* — not the sole source of entropy.
+
+3. **Topological mixers**  
+   Non-linear, non-linearizing transforms (Möbius, Klein parametrizations, or equivalent topological maps) fold and twist the state-space to reduce algebraic or linear structure that could lead to statistical biases.
+
+4. **Cryptographic mixing (provable stage)**  
+   A provable-style mixing stage (e.g., Blum–Blum–Shub style module) is used as an additional cryptographic mixing layer. In production the private factors are generated offline and kept secret; the system can publish a *fingerprint* of the public parameter (not raw factors).
+
+5. **Extractor and commit**  
+   Use a strong XOF (recommended: SHAKE family) as an entropy extractor and Keccak for EVM-compatible commitments. Off-chain: produce `(random_bytes, metadata)`. On-chain: store `commit = keccak256(random_bytes || metadata)` and later `reveal` for verification.
+
+6. **State ratchet**  
+   Update internal state with a cryptographic hash function for forward/backward secrecy:  
+   \(state_{new} = H(state_{old} \parallel output \parallel new\_entropy)\).
+
+---
+
+## Design rationale & security posture
+
+- **Layering**: Multiple independent sources and transforms (physical entropy + chaos + crypto mixing + extractor) reduce the chance that a single failure mode yields a predictable output.
+- **Sanitization**: Implementation-level choices (exact fixed-point widths, extraction bit windows, private mixing parameters) strongly affect bias and must be chosen and audited privately.
+- **On-chain verification**: Keep heavy computation off-chain. Use compact on-chain commitments (Keccak) and light verification, or provide zk proofs for soundness where required.
+- **Operational guidance**: Generate provable crypto parameters offline in an air-gapped environment; store secret factors in an HSM; log and fingerprint all entropy events.
+
+---
+
+## Recommended application patterns (examples)
+- **Falcon seeding (ERC-4337 / AA)**: Provide off-chain verifiable seeds for Falcon key generation or nonce generation. Publish a Keccak commitment on-chain and reveal the seed/metadata to authorized verifiers or auditors.
+- **Oracle randomness**: Produce off-chain randomness with provable commits, then reveal short fingerprints to contracts or use threshold signing / signed attestations.
+- **Custodial key generation**: Use hybrid RNG inside HSM for key pair material and publish audit fingerprints for third-party verification.
+
+---
+
+## Empirical validation (sanitized summary)
+- Short statistical tests (NIST SP 800-22 subsets) on sanitized demo outputs passed; full extended tests and raw logs are kept private and available for auditors under NDA.
+
+---
+
+## Notes on publication & IP
+This brief omits operational secrets and extraction heuristics. The complete implementation, private mixing parameters, prime generation artifacts, and full test logs are proprietary and available under NDA or for direct licensing/purchase.
+
+**Contact:** see `SECURITY.md` in this repository.

@@ -1,0 +1,115 @@
+"""
+demo/simulated_rng_demo.py
+
+Sanitized demo of a hybrid RNG *commit/reveal* flow for public repository.
+- Uses os.urandom (OS entropy) as a safe seed substitute.
+
+
+"""
+
+import os
+import json
+import hashlib
+import secrets
+import time
+from typing import Dict, Tuple
+
+try:
+    # Prefer pycryptodome keccak (Ethereum-compatible Keccak-256)
+    from Crypto.Hash import keccak as Keccak
+    def keccak256(data: bytes) -> bytes:
+        k = Keccak.new(digest_bits=256)
+        k.update(data)
+        return k.digest()
+except Exception:
+    # Fallback: Python's hashlib.sha3_256 (SHA3-256) — not identical to Ethereum Keccak
+    def keccak256(data: bytes) -> bytes:
+        return hashlib.sha3_256(data).digest()
+
+
+def collect_entropy(sample_bytes: int = 32) -> bytes:
+    """Collect safe demo entropy using OS RNG (do not publish private TRNG samples)."""
+    return os.urandom(sample_bytes)
+
+
+def chaos_amplifier_simulated(seed: bytes, rounds: int = 16) -> bytes:
+    """
+    Simulated "amplifier": iteratively hash seed to simulate increasing divergence.
+    NOTE: This is a demo placeholder — production uses fixed-point chaotic maps & careful extraction.
+    """
+    s = seed
+    for i in range(rounds):
+        s = hashlib.sha256(s + i.to_bytes(2, "big")).digest()
+    return s
+
+
+def extractor_shake_simulated(input_bytes: bytes, outlen: int = 32) -> bytes:
+    """
+    Simulated extractor: use SHAKE-like expansion via repeated hashing for demo purposes.
+    Production: use SHAKE256 XOF.
+    """
+    out = b""
+    counter = 0
+    while len(out) < outlen:
+        out += hashlib.sha256(input_bytes + counter.to_bytes(4, "big")).digest()
+        counter += 1
+    return out[:outlen]
+
+
+def make_metadata(seed_info: Dict, amplifier_info: Dict, extractor_info: Dict) -> Dict:
+    """Sanitized metadata describing the RNG event (no secret parameters)."""
+    return {
+        "timestamp": time.time(),
+        "seed_info": seed_info,
+        "amplifier_info": amplifier_info,
+        "extractor_info": extractor_info,
+        "note": "Sanitized demo metadata. Full metadata available under NDA."
+    }
+
+
+def commit_reveal_demo() -> Tuple[Dict, bytes]:
+    """
+    Runs the full sanitized demo: collect entropy -> simulate amplifier -> extract -> commit -> verify.
+    Returns (metadata_dict, random_bytes).
+    """
+    # 1) collect safe demo entropy
+    seed = collect_entropy(32)
+
+    # 2) amplifier (simulated)
+    amp_out = chaos_amplifier_simulated(seed, rounds=24)
+
+    # 3) extractor (simulated SHAKE)
+    random_bytes = extractor_shake_simulated(amp_out, outlen=32)  # 256-bit output
+
+    # 4) sanitized metadata (do NOT include raw seed or amp_out in public metadata)
+    metadata = make_metadata(
+        seed_info={"type": "os.urandom", "bytes": 32},
+        amplifier_info={"type": "simulated-hash-amplifier", "rounds": 24},
+        extractor_info={"type": "simulated-shake", "outlen": 32}
+    )
+
+    # 5) compute on-chain friendly commit (keccak256)
+    payload = json.dumps({"random": random_bytes.hex(), "meta": metadata}, sort_keys=True).encode()
+    commit = keccak256(payload)
+
+    # Return both structured info and raw commit
+    return {"metadata": metadata, "random_hex": "0x" + random_bytes.hex(), "commit_hex": "0x" + commit.hex()}, random_bytes
+
+
+def verify_commit(commit_hex: str, random_hex: str, metadata: Dict) -> bool:
+    """Verify a reveal matches a commit (recompute keccak256)."""
+    payload = json.dumps({"random": random_hex.replace("0x", ""), "meta": metadata}, sort_keys=True).encode()
+    return keccak256(payload).hex() == commit_hex.replace("0x", "")
+
+
+if __name__ == "__main__":
+    print("=== Hybrid (sanitized) RNG commit/reveal demo ===")
+    out, _ = commit_reveal_demo()
+    print("Commit (keccak256):", out["commit_hex"])
+    print("Random (hex):", out["random_hex"])
+    print("Metadata (sanitized):")
+    print(json.dumps(out["metadata"], indent=2))
+    print("\nVerifying commit locally...")
+    ok = verify_commit(out["commit_hex"], out["random_hex"], out["metadata"])
+    print("Verification OK?" , ok)
+    print("\nIMPORTANT: This demo uses only OS entropy and simulated amplifiers. For production a certified TRNG, audited chaotic amplifiers, and private cryptographic mixing must be used. Private parameters are not included in this public demo.")

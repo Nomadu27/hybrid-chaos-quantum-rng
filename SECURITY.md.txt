@@ -1,0 +1,11 @@
+# Security / Disclosure
+
+Thank you for your interest. This repo intentionally contains only public, sanitized material. To request access to the private implementation, heavy test logs, or production artifacts:
+
+1. Submit a responsible disclosure / request via email to: cb@steddycoin.com  or open an issue asking for NDA access.
+2. For vulnerability reports please use HackerOne or the Cantina link if your finding is about Base / on-chain randomness:
+   - Coinbase (HackerOne): https://hackerone.com/coinbase
+   - Base / Cantina (web3): https://cantina.xyz/...
+3. We will respond within 3 business days. We prefer to exchange a mutual NDA before sharing private parameters (e.g., BBS p/q, full prime generation logs).
+
+**Important:** Do *not* open pull requests that include private keys, secret moduli, or credential material. We will close such PRs for security reasons.

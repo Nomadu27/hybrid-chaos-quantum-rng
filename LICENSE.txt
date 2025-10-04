@@ -1,0 +1,5 @@
+Copyright (c) 2025 Nomadu27
+
+All rights reserved.
+
+This repository contains public documentation and sanitized examples only. The complete implementation, tests, and production artifacts are proprietary and not open-source. To request access, licensing, or commercial terms, contact: cb@steddycoin.com
