@@ -21,7 +21,7 @@ This brief omits private parameters and implementation-level heuristics — thos
    These maps are used as *amplifiers* — not the sole source of entropy.
 
 3. **Topological mixers**  
-   Non-linear, non-linearizing transforms (Möbius, Klein parametrizations, or equivalent topological maps) fold and twist the state-space to reduce algebraic or linear structure that could lead to statistical biases.
+   Non-linear, non-linearizing transforms ( topological maps) fold and twist the state-space to reduce algebraic or linear structure that could lead to statistical biases.
 
 4. **Cryptographic mixing (provable stage)**  
    A provable-style mixing stage (e.g., Blum–Blum–Shub style module) is used as an additional cryptographic mixing layer. In production the private factors are generated offline and kept secret; the system can publish a *fingerprint* of the public parameter (not raw factors).
@@ -60,3 +60,4 @@ This brief omits private parameters and implementation-level heuristics — thos
 This brief omits operational secrets and extraction heuristics. The complete implementation, private mixing parameters, prime generation artifacts, and full test logs are proprietary and available under NDA or for direct licensing/purchase.
 
 **Contact:** see `SECURITY.md` in this repository.
+
